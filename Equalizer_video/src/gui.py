@@ -5,6 +5,7 @@ import cv2
 import threading
 import os
 import queue
+from moviepy.editor import VideoFileClip
 
 class VideoComparerGUI:
     def __init__(self, root):
@@ -60,14 +61,34 @@ class VideoComparerGUI:
         self.stop_button = tk.Button(self.controls_frame, image=self.stop_icon, command=self.stop_videos)
         self.stop_button.grid(row=0, column=4, padx=5)
 
+        # Volume sliders
+        self.volume_frame = tk.Frame(root)
+        self.volume_frame.grid(row=3, column=0, columnspan=2, pady=10)
+
+        self.volume_label1 = tk.Label(self.volume_frame, text="Volume 1")
+        self.volume_label1.grid(row=0, column=0, padx=10)
+        self.volume_slider1 = ttk.Scale(self.volume_frame, from_=0, to=100, orient="horizontal")
+        self.volume_slider1.set(50)  # Default volume
+        self.volume_slider1.grid(row=1, column=0, padx=10)
+
+        self.volume_label2 = tk.Label(self.volume_frame, text="Volume 2")
+        self.volume_label2.grid(row=0, column=1, padx=10)
+        self.volume_slider2 = ttk.Scale(self.volume_frame, from_=0, to=100, orient="horizontal")
+        self.volume_slider2.set(50)  # Default volume
+        self.volume_slider2.grid(row=1, column=1, padx=10)
+
         # Video capture objects and flags
         self.cap1 = None
         self.cap2 = None
         self.playing = False
 
-        # Queue for thread-safe communication
+        # Queues for thread-safe communication
         self.frame_queue1 = queue.Queue()
         self.frame_queue2 = queue.Queue()
+
+        # Video clips for audio
+        self.clip1 = None
+        self.clip2 = None
 
     def resize_icon(self, filepath, size):
         """Resize an icon to the specified size using PIL."""
@@ -78,10 +99,12 @@ class VideoComparerGUI:
     def load_video1(self):
         self.video_path1 = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.mov *.mxf")])
         print(f"Loaded video 1: {self.video_path1}")
+        self.clip1 = VideoFileClip(self.video_path1)
 
     def load_video2(self):
         self.video_path2 = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.mov *.mxf")])
         print(f"Loaded video 2: {self.video_path2}")
+        self.clip2 = VideoFileClip(self.video_path2)
 
     def play_videos(self):
         if self.video_path1 and self.video_path2:
@@ -92,6 +115,10 @@ class VideoComparerGUI:
             # Start threads for reading frames
             threading.Thread(target=self.read_frames, args=(self.cap1, self.frame_queue1)).start()
             threading.Thread(target=self.read_frames, args=(self.cap2, self.frame_queue2)).start()
+
+            # Play audio
+            threading.Thread(target=self.clip1.audio.preview).start()
+            threading.Thread(target=self.clip2.audio.preview).start()
 
             # Start updating frames in the GUI
             self.update_frames()
@@ -145,15 +172,13 @@ class VideoComparerGUI:
 
     def stop_videos(self):
         self.playing = False
-        if self.cap1:
-            self.cap1.release()
-        if self.cap2:
-            self.cap2.release()
 
     def seek_video(self, value):
+        """Seek to a specific position in the video."""
         if self.cap1 and self.cap2:
-            # Implement seeking logic here
-            pass
+            frame_number = int(float(value))
+            self.cap1.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+            self.cap2.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
 if __name__ == "__main__":
     root = tk.Tk()

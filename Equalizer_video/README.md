@@ -20,3 +20,4 @@ Aplikacja służy do porównywania zgodności wideo i audio w dwóch plikach wid
 1. Sklonuj repozytorium:
    ```sh
    git clone git@github.com:hury77/Equalizer_video.git
+   ```
